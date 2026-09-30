@@ -13,6 +13,7 @@ Aplicación experimental para Windows. Permite asignar un layout de Windows a ca
 4. Presionar `Guardar` para crear el mapping. Un mapping guardado siempre queda activo.
 5. Usar `Actualizar` para cambiar su layout o `Borrar` para eliminarlo.
 6. Activar `Iniciar con Windows` desde la ventana o desde el menú del tray para que arranque automáticamente para el usuario actual.
+7. Activar `Iniciar minimizado` desde la ventana o el menú del tray para que los próximos arranques queden en el tray. Usar `Mostrar` o doble clic en el icono para abrir la ventana.
 
 `Play` y `Pause` controlan globalmente si la aplicación aplica todos los mappings. El mismo control está disponible en el menú del icono del tray y se conserva al reiniciar. El layout asignado aparece marcado como mapeado al volver a seleccionar ese teclado. La configuración se guarda en:
 

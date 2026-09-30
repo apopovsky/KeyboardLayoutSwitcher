@@ -6,6 +6,7 @@ namespace KeyboardLayoutSwitcher;
 internal sealed class AppConfig
 {
     public bool IsMonitoringEnabled { get; set; } = true;
+    public bool StartMinimized { get; set; }
     public Dictionary<string, DeviceMapping> Mappings { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 

@@ -13,6 +13,7 @@ internal sealed class MainForm : Form
     private readonly Button _updateMappingButton = new() { Text = Localization.Get("update"), AutoSize = true };
     private readonly Button _deleteMappingButton = new() { Text = Localization.Get("delete"), AutoSize = true };
     private readonly CheckBox _startWithWindowsCheck = new() { Text = Localization.Get("startup"), AutoSize = true };
+    private readonly CheckBox _startMinimizedCheck = new() { Text = Localization.Get("startMinimized"), AutoSize = true };
     private readonly Label _monitoringStatusLabel = new() { AutoSize = true, Anchor = AnchorStyles.Left };
     private readonly Label _statusLabel = new() { AutoSize = true, ForeColor = Color.DimGray };
     private readonly Label _detectedKeyboardLabel = new() { AutoSize = false, Dock = DockStyle.Fill, AutoEllipsis = true, ForeColor = Color.DimGray };
@@ -29,6 +30,7 @@ internal sealed class MainForm : Form
     private readonly ToolStripMenuItem _trayPlayItem = new(Localization.Get("trayActivate"));
     private readonly ToolStripMenuItem _trayPauseItem = new(Localization.Get("trayPause"));
     private readonly ToolStripMenuItem _trayStartupItem = new(Localization.Get("startup"));
+    private readonly ToolStripMenuItem _trayStartMinimizedItem = new(Localization.Get("startMinimized"));
     private readonly Icon _applicationIcon;
     private readonly AppConfig _config;
     private IReadOnlyList<KeyboardDevice> _devices = Array.Empty<KeyboardDevice>();
@@ -36,6 +38,7 @@ internal sealed class MainForm : Form
     private string? _lastDetectedDevicePath;
     private bool _loadingSelection;
     private bool _exitRequested;
+    private bool _startupVisibilityApplied;
 
     public MainForm()
     {
@@ -55,8 +58,24 @@ internal sealed class MainForm : Form
         _layoutList.SelectedIndexChanged += (_, _) => UpdateLayoutPreview();
         _startWithWindowsCheck.Checked = StartupManager.IsEnabled(Application.ExecutablePath);
         _startWithWindowsCheck.CheckedChanged += StartWithWindowsCheckChanged;
+        _startMinimizedCheck.Checked = _config.StartMinimized;
+        _trayStartMinimizedItem.Checked = _config.StartMinimized;
+        _startMinimizedCheck.CheckedChanged += (_, _) => SetStartMinimized(_startMinimizedCheck.Checked);
         RefreshMonitoringUi();
-        Shown += (_, _) => InitializeInputMonitoring();
+    }
+
+    protected override void SetVisibleCore(bool value)
+    {
+        if (value && !_startupVisibilityApplied)
+        {
+            _startupVisibilityApplied = true;
+            // Raw Input needs a window handle even when starting hidden in the tray.
+            CreateHandle();
+            InitializeInputMonitoring();
+            value = !_config.StartMinimized;
+        }
+
+        base.SetVisibleCore(value);
     }
 
     protected override void WndProc(ref Message m)
@@ -148,6 +167,7 @@ internal sealed class MainForm : Form
         actionPanel.Controls.Add(_deleteMappingButton);
         actionPanel.Controls.Add(refreshButton);
         actionPanel.Controls.Add(_startWithWindowsCheck);
+        actionPanel.Controls.Add(_startMinimizedCheck);
         actionPanel.Controls.Add(_statusLabel);
 
         var testGroup = new GroupBox { Text = Localization.Get("testGroup"), Dock = DockStyle.Fill, Padding = new Padding(10) };
@@ -529,9 +549,11 @@ internal sealed class MainForm : Form
         _trayPlayItem.Click += (_, _) => SetMonitoringEnabled(true);
         _trayPauseItem.Click += (_, _) => SetMonitoringEnabled(false);
         _trayStartupItem.Click += (_, _) => SetStartWithWindows(!_trayStartupItem.Checked);
+        _trayStartMinimizedItem.Click += (_, _) => SetStartMinimized(!_trayStartMinimizedItem.Checked);
         menu.Items.Add(_trayPlayItem);
         menu.Items.Add(_trayPauseItem);
         menu.Items.Add(_trayStartupItem);
+        menu.Items.Add(_trayStartMinimizedItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(Localization.Get("show"), null, (_, _) => { Show(); WindowState = FormWindowState.Normal; Activate(); });
         menu.Items.Add(Localization.Get("exit"), null, (_, _) => { _exitRequested = true; Application.Exit(); });
@@ -545,6 +567,19 @@ internal sealed class MainForm : Form
         };
         icon.DoubleClick += (_, _) => { Show(); WindowState = FormWindowState.Normal; Activate(); };
         return icon;
+    }
+
+    private void SetStartMinimized(bool enabled)
+    {
+        if (_config.StartMinimized == enabled)
+        {
+            return;
+        }
+
+        _config.StartMinimized = enabled;
+        ConfigStore.Save(_config);
+        _startMinimizedCheck.Checked = enabled;
+        _trayStartMinimizedItem.Checked = enabled;
     }
 
     private void SetStartWithWindows(bool enabled)
